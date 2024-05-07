@@ -9,6 +9,7 @@ from singer_sdk.helpers.jsonpath import extract_jsonpath
 from singer_sdk.streams import RESTStream
 
 from tap_powerbi.auth import PowerBIAuthenticator
+from singer_sdk.exceptions import FatalAPIError, RetriableAPIError
 
 
 class PowerBIStream(RESTStream):
@@ -44,6 +45,8 @@ class PowerBIStream(RESTStream):
             self.offset = self.offset + self._page_size
             all_matches = extract_jsonpath(self.records_jsonpath, response.json())
             first_match = next(iter(all_matches), None)
+            if first_match is None:
+                return None
             if "rows" in first_match:
                 if len(first_match["rows"]) == 0:
                     return None
@@ -59,3 +62,18 @@ class PowerBIStream(RESTStream):
         """Return a dictionary of values to be used in URL parameterization."""
         params: dict = {}
         return params
+    
+    def validate_response(self, response: requests.Response) -> None:
+        if (
+            response.status_code in self.extra_retry_statuses
+            or 500 <= response.status_code < 600
+        ):
+            msg = self.response_error_message(response)
+            raise RetriableAPIError(msg, response)
+        elif 400 <= response.status_code < 500:
+            msg = self.response_error_message(response)
+            data = response.json()
+            if self.name == "dataset_data" and "error" in data:
+                self.logger.warn(f"Error fetching data for {response.request.url}, body {response.request.body}, respone: {response.text}")
+            else:    
+                raise FatalAPIError(msg)
