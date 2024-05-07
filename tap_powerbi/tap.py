@@ -33,7 +33,7 @@ class TapPowerBI(Tap):
         th.Property("client_secret", th.StringType, required=True),
         th.Property("redirect_uri", th.StringType, required=True),
         th.Property("refresh_token", th.StringType, required=True),
-        th.Property("tables", th.ArrayType(th.StringType)),
+        th.Property("tables", th.CustomType({"type": ["array", "string"]})),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:
