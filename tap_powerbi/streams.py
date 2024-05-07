@@ -108,7 +108,10 @@ class DataSetDataStream(PowerBIStream):
         
     def get_tables(self, context: Optional[dict]) -> list:
         if self.config.get("tables"):
-            return self.config.get("tables")
+            tables =  self.config.get("tables")
+            if isinstance(tables, str):
+                tables = tables.split(",")
+            return tables   
         else:
             return self.get_dataset_tables(context)
         
