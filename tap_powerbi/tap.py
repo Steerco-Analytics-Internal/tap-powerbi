@@ -10,12 +10,16 @@ from tap_powerbi.streams import (
     DataSetsStream,
     PowerBIStream,
     ReportsStream,
+    ReportDataSetsStream,
+    ReportDataSetDataStream,
 )
 
 STREAM_TYPES = [
     ReportsStream,
     DataSetsStream,
     DataSetDataStream,
+    ReportDataSetsStream,
+    ReportDataSetDataStream,
 ]
 
 
@@ -29,6 +33,7 @@ class TapPowerBI(Tap):
         th.Property("client_secret", th.StringType, required=True),
         th.Property("redirect_uri", th.StringType, required=True),
         th.Property("refresh_token", th.StringType, required=True),
+        th.Property("tables", th.ArrayType(th.StringType)),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:
