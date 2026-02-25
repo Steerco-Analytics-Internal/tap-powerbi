@@ -192,8 +192,36 @@ def test_discover_streams_handles_api_errors_gracefully(mock_get, mock_auth_post
     assert len(streams) == 3  # no dynamic streams if discovery failed
 
 
-def _mock_dax_fallback_responses(*args, **kwargs):
-    """Simulate REST /tables returning 403, DAX fallback succeeding."""
+import base64
+
+
+def _encode_tmdl(text):
+    return base64.b64encode(text.encode("utf-8")).decode("utf-8")
+
+
+_ITEMS_TMDL = """\
+table Items
+
+    column Label
+        dataType: string
+        sourceColumn: Label
+
+    column Value
+        dataType: double
+        sourceColumn: Value
+"""
+
+_HIDDEN_TMDL = """\
+table InternalCalc
+    isHidden
+
+    column Temp
+        dataType: string
+"""
+
+
+def _mock_fabric_fallback_get(*args, **kwargs):
+    """Simulate REST /tables returning 403, forcing Fabric fallback."""
     url = args[0] if args else kwargs.get("url", "")
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -203,7 +231,7 @@ def _mock_dax_fallback_responses(*args, **kwargs):
         mock_resp.json.return_value = {
             "value": [{"id": "ws-1", "name": "TestWorkspace"}]
         }
-    elif "/datasets" in url and "/tables" not in url and "/executeQueries" not in url:
+    elif "/datasets" in url and "/tables" not in url:
         mock_resp.json.return_value = {
             "value": [{"id": "ds-1", "name": "TestModel"}]
         }
@@ -214,8 +242,8 @@ def _mock_dax_fallback_responses(*args, **kwargs):
     return mock_resp
 
 
-def _mock_dax_post_responses(*args, **kwargs):
-    """Mock for requests.post — handles both auth and DAX queries."""
+def _mock_fabric_fallback_post(*args, **kwargs):
+    """Mock for requests.post — handles auth and Fabric getDefinition."""
     url = args[0] if args else kwargs.get("url", "")
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -223,32 +251,31 @@ def _mock_dax_post_responses(*args, **kwargs):
 
     if "login.microsoftonline.com" in url:
         mock_resp.json.return_value = {"access_token": "tok"}
-    elif "/executeQueries" in url:
-        body = kwargs.get("json", {})
-        query = body.get("queries", [{}])[0].get("query", "")
-        if "INFO.TABLES" in query:
-            mock_resp.json.return_value = {
-                "results": [{"tables": [{"rows": [
-                    {"[ID]": 1, "[Name]": "Items", "[IsHidden]": False},
-                    {"[ID]": 2, "[Name]": "InternalCalc", "[IsHidden]": True},
-                ]}]}]
+    elif "/getDefinition" in url:
+        mock_resp.json.return_value = {
+            "definition": {
+                "parts": [
+                    {
+                        "path": "definition/tables/Items.tmdl",
+                        "payload": _encode_tmdl(_ITEMS_TMDL),
+                        "payloadType": "InlineBase64",
+                    },
+                    {
+                        "path": "definition/tables/InternalCalc.tmdl",
+                        "payload": _encode_tmdl(_HIDDEN_TMDL),
+                        "payloadType": "InlineBase64",
+                    },
+                ]
             }
-        elif "INFO.COLUMNS" in query:
-            mock_resp.json.return_value = {
-                "results": [{"tables": [{"rows": [
-                    {"[TableID]": 1, "[ExplicitName]": "Label", "[ExplicitDataType]": 2, "[IsHidden]": False},
-                    {"[TableID]": 1, "[ExplicitName]": "Value", "[ExplicitDataType]": 8, "[IsHidden]": False},
-                    {"[TableID]": 2, "[ExplicitName]": "Hidden", "[ExplicitDataType]": 2, "[IsHidden]": False},
-                ]}]}]
-            }
+        }
     return mock_resp
 
 
-@patch("tap_powerbi.tap.requests.post", side_effect=_mock_dax_post_responses)
-@patch("tap_powerbi.tap.requests.get", side_effect=_mock_dax_fallback_responses)
-@patch("tap_powerbi.auth.requests.post", side_effect=_mock_dax_post_responses)
-def test_discover_streams_falls_back_to_dax(mock_auth_post, mock_get, mock_tap_post):
-    """When REST /tables returns 403, fall back to DAX INFO.TABLES()."""
+@patch("tap_powerbi.tap.requests.post", side_effect=_mock_fabric_fallback_post)
+@patch("tap_powerbi.tap.requests.get", side_effect=_mock_fabric_fallback_get)
+@patch("tap_powerbi.auth.requests.post", side_effect=_mock_fabric_fallback_post)
+def test_discover_streams_falls_back_to_fabric(mock_auth_post, mock_get, mock_tap_post):
+    """When REST /tables returns 403, fall back to Fabric getDefinition."""
     tap = TapPowerBI(config=SAMPLE_CONFIG, parse_env_config=False)
     streams = tap.discover_streams()
 

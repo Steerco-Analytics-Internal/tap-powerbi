@@ -27,5 +27,6 @@ def test_get_access_token():
             "redirect_uri": "http://localhost",
             "refresh_token": "test-refresh",
             "grant_type": "refresh_token",
+            "resource": "https://analysis.windows.net/powerbi/api",
         },
     )

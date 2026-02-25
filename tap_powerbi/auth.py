@@ -6,7 +6,7 @@ from singer import utils
 from singer_sdk.authenticators import OAuthAuthenticator, SingletonMeta
 
 
-def get_access_token(config: dict) -> str:
+def get_access_token(config: dict, resource: str = "https://analysis.windows.net/powerbi/api") -> str:
     """Get an access token using the refresh token grant. Standalone (no stream needed)."""
     response = requests.post(
         "https://login.microsoftonline.com/common/oauth2/token",
@@ -16,6 +16,7 @@ def get_access_token(config: dict) -> str:
             "redirect_uri": config["redirect_uri"],
             "refresh_token": config["refresh_token"],
             "grant_type": "refresh_token",
+            "resource": resource,
         },
     )
     response.raise_for_status()
