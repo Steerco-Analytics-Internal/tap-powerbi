@@ -168,9 +168,9 @@ def test_discover_streams_creates_dynamic_table_streams(mock_get, mock_auth_post
     assert "workspaces" in stream_names
     assert "datasets" in stream_names
     assert "dataset_tables" in stream_names
-    assert "TestModel__Items" in stream_names
+    assert "TestModel | table: Items" in stream_names
 
-    table_stream = next(s for s in streams if s.name == "TestModel__Items")
+    table_stream = next(s for s in streams if s.name == "TestModel | table: Items")
     assert "Label" in table_stream.schema["properties"]
     assert "Value" in table_stream.schema["properties"]
 
@@ -280,10 +280,10 @@ def test_discover_streams_falls_back_to_fabric(mock_auth_post, mock_get, mock_ta
     streams = tap.discover_streams()
 
     stream_names = [s.name for s in streams]
-    assert "TestModel__Items" in stream_names
+    assert "TestModel | table: Items" in stream_names
     # Hidden table should be excluded
-    assert "TestModel__InternalCalc" not in stream_names
+    assert "TestModel | table: InternalCalc" not in stream_names
 
-    table_stream = next(s for s in streams if s.name == "TestModel__Items")
+    table_stream = next(s for s in streams if s.name == "TestModel | table: Items")
     assert "Label" in table_stream.schema["properties"]
     assert "Value" in table_stream.schema["properties"]

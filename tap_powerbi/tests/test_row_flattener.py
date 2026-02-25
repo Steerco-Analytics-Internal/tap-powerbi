@@ -25,3 +25,18 @@ def test_handles_empty_row():
 def test_preserves_none_values():
     raw = {"[T].[Col]": None}
     assert flatten_row(raw) == {"Col": None}
+
+
+def test_strips_table_bracket_format():
+    raw = {"MyTable[Col1]": "foo", "MyTable[Col2]": 42}
+    assert flatten_row(raw) == {"Col1": "foo", "Col2": 42}
+
+
+def test_strips_bare_bracket_format():
+    raw = {"[Measure A]": 100.5, "[Measure B]": 200}
+    assert flatten_row(raw) == {"Measure A": 100.5, "Measure B": 200}
+
+
+def test_mixed_visual_output():
+    raw = {"MyTable[Col1]": "foo", "[Measure A]": 99.9, "plain": True}
+    assert flatten_row(raw) == {"Col1": "foo", "Measure A": 99.9, "plain": True}

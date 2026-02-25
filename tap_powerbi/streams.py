@@ -140,3 +140,48 @@ class TableDataStream(PowerBIStream):
         self, response, previous_token: Optional[Any]
     ) -> Optional[Any]:
         return None
+
+
+class VisualDataStream(PowerBIStream):
+    """Extracts data from a report visual by executing its underlying DAX query.
+
+    Instances are created dynamically during discover_streams() -- one per visual.
+    """
+
+    rest_method = "POST"
+    records_jsonpath = "$.results[*].tables[*].rows[*]"
+
+    def __init__(self, tap, name: str, workspace_id: str, dataset_id: str,
+                 report_name: str, visual_title: str, visual_type: str,
+                 dax_query: str, columns: list, **kwargs):
+        self._workspace_id = workspace_id
+        self._dataset_id = dataset_id
+        self._report_name = report_name
+        self._visual_title = visual_title
+        self._visual_type = visual_type
+        self._dax_query = dax_query
+        self._columns = columns
+        super().__init__(tap=tap, name=name, schema=self._build_schema())
+
+    def _build_schema(self) -> dict:
+        return build_schema_from_columns(self._columns)
+
+    @property
+    def path(self) -> str:
+        return f"/groups/{self._workspace_id}/datasets/{self._dataset_id}/executeQueries"
+
+    def prepare_request_payload(
+        self, context: Optional[Any], next_page_token: Optional[Any]
+    ) -> Optional[dict]:
+        return {
+            "queries": [{"query": self._dax_query}],
+            "serializerSettings": {"includeNulls": True},
+        }
+
+    def post_process(self, row: dict, context: Optional[dict]) -> dict:
+        return flatten_row(row)
+
+    def get_next_page_token(
+        self, response, previous_token: Optional[Any]
+    ) -> Optional[Any]:
+        return None
