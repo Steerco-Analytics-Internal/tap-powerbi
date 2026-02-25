@@ -1,8 +1,25 @@
 """PowerBI Authentication."""
 
+import requests
 
 from singer import utils
 from singer_sdk.authenticators import OAuthAuthenticator, SingletonMeta
+
+
+def get_access_token(config: dict) -> str:
+    """Get an access token using the refresh token grant. Standalone (no stream needed)."""
+    response = requests.post(
+        "https://login.microsoftonline.com/common/oauth2/token",
+        data={
+            "client_id": config["client_id"],
+            "client_secret": config["client_secret"],
+            "redirect_uri": config["redirect_uri"],
+            "refresh_token": config["refresh_token"],
+            "grant_type": "refresh_token",
+        },
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
 
 
 class PowerBIAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):

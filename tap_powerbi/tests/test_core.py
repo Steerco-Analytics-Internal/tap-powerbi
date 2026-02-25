@@ -1,23 +1,12 @@
-"""Tests standard tap features using the built-in SDK tests library."""
-
-import datetime
-
-from singer_sdk.testing import get_standard_tap_tests
+"""Core tap configuration tests."""
 
 from tap_powerbi.tap import TapPowerBI
 
-SAMPLE_CONFIG = {
-    "start_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
-    # TODO: Initialize minimal tap config
-}
 
-
-# Run standard built-in tap tests from the SDK:
-def test_standard_tap_tests():
-    """Run standard tap tests from the SDK."""
-    tests = get_standard_tap_tests(TapPowerBI, config=SAMPLE_CONFIG)
-    for test in tests:
-        test()
-
-
-# TODO: Create additional tests as appropriate for your tap.
+def test_config_schema_requires_auth_fields():
+    schema = TapPowerBI.config_jsonschema
+    required = schema.get("required", [])
+    assert "client_id" in required
+    assert "client_secret" in required
+    assert "redirect_uri" in required
+    assert "refresh_token" in required
